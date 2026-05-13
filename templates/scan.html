@@ -1,0 +1,190 @@
+{% extends "base.html" %}
+
+{% block title %}تصحيح أوراق الإجابة{% endblock %}
+
+{% block content %}
+<div class="card">
+    <h1 class="page-title">
+        <i class="fas fa-camera"></i>
+        تصحيح أوراق الإجابة - {{ exam.title }}
+    </h1>
+    
+    <div class="alert alert-info">
+        <i class="fas fa-info-circle"></i>
+        <div>
+            <strong>{{ exam.title }}</strong> ({{ exam.subject or 'بدون مادة' }}) - 
+            {{ exam.num_questions }} سؤال × {{ exam.num_choices }} خيارات - 
+            معرف: <strong>{{ exam.id }}</strong>
+        </div>
+    </div>
+    
+    <div style="background: #f7fafc; padding: 30px; border-radius: 12px; border: 2px dashed #cbd5e0; text-align: center; margin: 20px 0;">
+        <i class="fas fa-cloud-upload-alt" style="font-size: 4em; color: #667eea; margin-bottom: 15px;"></i>
+        <h2 style="margin-bottom: 10px;">رفع صور أوراق الإجابة</h2>
+        <p style="color: #718096; margin-bottom: 20px;">يمكنك رفع عدة صور دفعة واحدة (JPG, PNG)</p>
+        
+        <input type="file" id="imageInput" accept="image/*" multiple style="display: none;">
+        <button type="button" class="btn btn-primary" onclick="document.getElementById('imageInput').click()" style="font-size: 1.1em;">
+            <i class="fas fa-folder-open"></i> اختر الصور
+        </button>
+    </div>
+    
+    <div id="filesList" style="margin: 20px 0;"></div>
+    
+    <div style="text-align: center;">
+        <button id="processBtn" class="btn btn-success" style="font-size: 1.1em; padding: 14px 30px; display: none;" onclick="processFiles()">
+            <i class="fas fa-cog"></i> بدء التصحيح
+        </button>
+    </div>
+    
+    <div id="results" style="margin-top: 30px;"></div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const examId = '{{ exam_id }}';
+let selectedFiles = [];
+
+document.getElementById('imageInput').addEventListener('change', function(e) {
+    selectedFiles = Array.from(e.target.files);
+    updateFilesList();
+});
+
+function updateFilesList() {
+    const list = document.getElementById('filesList');
+    if (selectedFiles.length === 0) {
+        list.innerHTML = '';
+        document.getElementById('processBtn').style.display = 'none';
+        return;
+    }
+    
+    let html = '<h3 style="margin-bottom: 15px;"><i class="fas fa-images"></i> الصور المختارة (' + selectedFiles.length + ')</h3>';
+    html += '<div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px;">';
+    
+    selectedFiles.forEach((file, idx) => {
+        const url = URL.createObjectURL(file);
+        html += `
+            <div style="background: white; padding: 10px; border-radius: 8px; border: 1px solid #e2e8f0; text-align: center;">
+                <img src="${url}" style="max-width: 100%; max-height: 150px; border-radius: 6px; margin-bottom: 8px;">
+                <div style="font-size: 0.85em; color: #4a5568; word-break: break-all;">${file.name}</div>
+                <button class="btn btn-danger" style="padding: 4px 10px; margin-top: 8px; font-size: 0.85em;" onclick="removeFile(${idx})">
+                    <i class="fas fa-times"></i> إزالة
+                </button>
+            </div>
+        `;
+    });
+    html += '</div>';
+    
+    list.innerHTML = html;
+    document.getElementById('processBtn').style.display = 'inline-flex';
+}
+
+function removeFile(idx) {
+    selectedFiles.splice(idx, 1);
+    updateFilesList();
+}
+
+async function processFiles() {
+    if (selectedFiles.length === 0) return;
+    
+    const btn = document.getElementById('processBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جارٍ التصحيح...';
+    
+    const results = document.getElementById('results');
+    results.innerHTML = '<div class="alert alert-info"><i class="fas fa-spinner fa-spin"></i> جارٍ معالجة ' + selectedFiles.length + ' صورة...</div>';
+    
+    const formData = new FormData();
+    formData.append('exam_id', examId);
+    selectedFiles.forEach(f => formData.append('images', f));
+    
+    try {
+        const response = await fetch('/api/scan', {
+            method: 'POST',
+            body: formData
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            displayResults(data.results);
+        } else {
+            results.innerHTML = `<div class="alert alert-danger"><i class="fas fa-times-circle"></i> ${data.error || 'خطأ'}</div>`;
+        }
+    } catch (e) {
+        results.innerHTML = `<div class="alert alert-danger"><i class="fas fa-times-circle"></i> خطأ: ${e.message}</div>`;
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-cog"></i> بدء التصحيح';
+    }
+}
+
+function displayResults(results) {
+    const container = document.getElementById('results');
+    let html = '<h2 style="margin: 20px 0;"><i class="fas fa-check-double"></i> النتائج</h2>';
+    
+    let success = 0;
+    results.forEach(r => {
+        if (r.success !== false) success++;
+    });
+    
+    html += `<div class="alert alert-success"><i class="fas fa-check-circle"></i> تم تصحيح ${success} من ${results.length} ورقة بنجاح</div>`;
+    
+    html += '<table><thead><tr>';
+    html += '<th>الصورة</th><th>رقم الطالب</th><th>الدرجة</th><th>النسبة</th>';
+    html += '<th>صحيح</th><th>خطأ</th><th>فارغ</th><th>الحالة</th>';
+    html += '</tr></thead><tbody>';
+    
+    results.forEach(r => {
+        if (r.success === false) {
+            html += `
+                <tr>
+                    <td>${r.filename || '-'}</td>
+                    <td colspan="6" style="color: #c53030;">${r.error}</td>
+                    <td><span class="badge badge-danger">فشل</span></td>
+                </tr>
+            `;
+        } else {
+            const percentage = r.percentage || 0;
+            let badgeClass = 'badge-danger';
+            let status = 'راسب';
+            if (percentage >= 90) { badgeClass = 'badge-success'; status = 'ممتاز'; }
+            else if (percentage >= 75) { badgeClass = 'badge-info'; status = 'جيد جداً'; }
+            else if (percentage >= 50) { badgeClass = 'badge-warning'; status = 'ناجح'; }
+            
+            html += `
+                <tr>
+                    <td style="font-size: 0.85em;">${r.filename}</td>
+                    <td><strong>${r.student_id || '-'}</strong></td>
+                    <td><strong>${r.score}</strong></td>
+                    <td><strong>${r.percentage}%</strong></td>
+                    <td style="color: #38a169;"><strong>${r.correct}</strong></td>
+                    <td style="color: #e53e3e;"><strong>${r.wrong}</strong></td>
+                    <td style="color: #718096;">${r.blank}</td>
+                    <td><span class="badge ${badgeClass}">${status}</span></td>
+                </tr>
+            `;
+        }
+    });
+    
+    html += '</tbody></table>';
+    
+    html += `
+        <div style="text-align: center; margin-top: 30px;">
+            <a href="/results/${examId}" class="btn btn-primary">
+                <i class="fas fa-chart-bar"></i> عرض جميع النتائج والإحصائيات
+            </a>
+        </div>
+    `;
+    
+    container.innerHTML = html;
+    
+    // إفراغ الاختيار
+    selectedFiles = [];
+    document.getElementById('imageInput').value = '';
+    document.getElementById('filesList').innerHTML = '';
+    document.getElementById('processBtn').style.display = 'none';
+}
+</script>
+{% endblock %}

@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+
+{% block title %}الاختبارات{% endblock %}
+
+{% block content %}
+<div class="card">
+    <h1 class="page-title">
+        <i class="fas fa-list"></i>
+        قائمة الاختبارات
+    </h1>
+    
+    {% if exams %}
+    <table>
+        <thead>
+            <tr>
+                <th>المعرف</th>
+                <th>العنوان</th>
+                <th>المادة</th>
+                <th>عدد الأسئلة</th>
+                <th>الخيارات</th>
+                <th>تاريخ الإنشاء</th>
+                <th>الإجراءات</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for exam_id, exam in exams.items() %}
+            <tr>
+                <td><strong>{{ exam.id }}</strong></td>
+                <td>{{ exam.title }}</td>
+                <td>{{ exam.subject or '-' }}</td>
+                <td><span class="badge badge-info">{{ exam.num_questions }}</span></td>
+                <td>{{ exam.num_choices }}</td>
+                <td>{{ exam.created_at[:10] }}</td>
+                <td>
+                    <div style="display: flex; gap: 5px; justify-content: center; flex-wrap: wrap;">
+                        <a href="/download-sheet/{{ exam.id }}" class="btn btn-info" style="padding: 6px 12px;" title="تحميل ورقة الإجابة">
+                            <i class="fas fa-file-pdf"></i>
+                        </a>
+                        <a href="/scan/{{ exam.id }}" class="btn btn-success" style="padding: 6px 12px;" title="تصحيح">
+                            <i class="fas fa-camera"></i>
+                        </a>
+                        <a href="/results/{{ exam.id }}" class="btn btn-primary" style="padding: 6px 12px;" title="النتائج">
+                            <i class="fas fa-chart-bar"></i>
+                        </a>
+                        <button class="btn btn-danger" style="padding: 6px 12px;" onclick="deleteExam('{{ exam.id }}')" title="حذف">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <div class="empty-state">
+        <i class="fas fa-folder-open"></i>
+        <h2>لا توجد اختبارات بعد</h2>
+        <p style="margin: 20px 0;">ابدأ بإنشاء اختبارك الأول</p>
+        <a href="/create-exam" class="btn btn-primary">
+            <i class="fas fa-plus-circle"></i> إنشاء اختبار جديد
+        </a>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+async function deleteExam(examId) {
+    if (!confirm('هل أنت متأكد من حذف هذا الاختبار وجميع نتائجه؟')) return;
+    
+    try {
+        const response = await fetch(`/api/delete-exam/${examId}`, { method: 'POST' });
+        if (response.ok) {
+            location.reload();
+        }
+    } catch (e) {
+        alert('خطأ في الحذف');
+    }
+}
+</script>
+{% endblock %}

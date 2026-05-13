@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+
+{% block title %}جميع النتائج{% endblock %}
+
+{% block content %}
+<div class="card">
+    <h1 class="page-title">
+        <i class="fas fa-chart-bar"></i>
+        جميع النتائج
+    </h1>
+    
+    {% if results %}
+    <table>
+        <thead>
+            <tr>
+                <th>المعرف</th>
+                <th>الاختبار</th>
+                <th>رقم الطالب</th>
+                <th>الدرجة</th>
+                <th>النسبة</th>
+                <th>صحيح/خطأ/فارغ</th>
+                <th>التاريخ</th>
+                <th>الإجراءات</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for r in results|reverse %}
+                {% if r.success %}
+                <tr>
+                    <td><small>{{ r.result_id }}</small></td>
+                    <td>{{ exams[r.exam_id].title if r.exam_id in exams else '-' }}</td>
+                    <td><strong>{{ r.student_id }}</strong></td>
+                    <td><strong>{{ r.score }}</strong></td>
+                    <td>
+                        {% if r.percentage >= 90 %}
+                            <span class="badge badge-success">{{ r.percentage }}%</span>
+                        {% elif r.percentage >= 50 %}
+                            <span class="badge badge-warning">{{ r.percentage }}%</span>
+                        {% else %}
+                            <span class="badge badge-danger">{{ r.percentage }}%</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <span style="color: #38a169;">{{ r.correct }}</span> / 
+                        <span style="color: #e53e3e;">{{ r.wrong }}</span> / 
+                        <span style="color: #718096;">{{ r.blank }}</span>
+                    </td>
+                    <td><small>{{ r.processed_at[:16].replace('T', ' ') }}</small></td>
+                    <td>
+                        <button class="btn btn-danger" style="padding: 6px 12px;" onclick="deleteResult('{{ r.result_id }}')">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </td>
+                </tr>
+                {% endif %}
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <div class="empty-state">
+        <i class="fas fa-inbox"></i>
+        <h2>لا توجد نتائج بعد</h2>
+        <p style="margin: 20px 0;">قم بتصحيح بعض أوراق الإجابة أولاً</p>
+        <a href="/exams" class="btn btn-primary">
+            <i class="fas fa-list"></i> الاختبارات
+        </a>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+async function deleteResult(id) {
+    if (!confirm('حذف هذه النتيجة؟')) return;
+    await fetch(`/api/delete-result/${id}`, { method: 'POST' });
+    location.reload();
+}
+</script>
+{% endblock %}

@@ -1,0 +1,168 @@
+{% extends "base.html" %}
+
+{% block title %}نتائج {{ exam.title }}{% endblock %}
+
+{% block content %}
+<div class="card">
+    <h1 class="page-title">
+        <i class="fas fa-chart-line"></i>
+        نتائج: {{ exam.title }}
+    </h1>
+    
+    <div style="display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap;">
+        <a href="/scan/{{ exam_id }}" class="btn btn-success">
+            <i class="fas fa-plus"></i> تصحيح المزيد
+        </a>
+        <a href="/api/export/{{ exam_id }}" class="btn btn-info">
+            <i class="fas fa-file-excel"></i> تصدير Excel
+        </a>
+        <a href="/download-sheet/{{ exam_id }}" class="btn btn-warning">
+            <i class="fas fa-file-pdf"></i> ورقة الإجابة
+        </a>
+    </div>
+</div>
+
+<div id="statsContainer" class="grid"></div>
+
+<div class="card">
+    <h2 style="margin-bottom: 20px;"><i class="fas fa-table"></i> النتائج التفصيلية</h2>
+    
+    {% if results %}
+    <div style="overflow-x: auto;">
+        <table>
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>رقم الطالب</th>
+                    <th>الدرجة</th>
+                    <th>النسبة</th>
+                    <th>صحيح</th>
+                    <th>خطأ</th>
+                    <th>فارغ</th>
+                    <th>الحالة</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for r in results|sort(attribute='percentage', reverse=True) %}
+                {% if r.success %}
+                <tr>
+                    <td>{{ loop.index }}</td>
+                    <td><strong>{{ r.student_id }}</strong></td>
+                    <td><strong>{{ r.score }}</strong></td>
+                    <td><strong>{{ r.percentage }}%</strong></td>
+                    <td style="color: #38a169;"><strong>{{ r.correct }}</strong></td>
+                    <td style="color: #e53e3e;"><strong>{{ r.wrong }}</strong></td>
+                    <td style="color: #718096;">{{ r.blank }}</td>
+                    <td>
+                        {% if r.percentage >= 90 %}
+                            <span class="badge badge-success">ممتاز</span>
+                        {% elif r.percentage >= 75 %}
+                            <span class="badge badge-info">جيد جداً</span>
+                        {% elif r.percentage >= 50 %}
+                            <span class="badge badge-warning">ناجح</span>
+                        {% else %}
+                            <span class="badge badge-danger">راسب</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endif %}
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <i class="fas fa-inbox"></i>
+        <h2>لا توجد نتائج لهذا الاختبار</h2>
+        <a href="/scan/{{ exam_id }}" class="btn btn-primary" style="margin-top: 20px;">
+            <i class="fas fa-camera"></i> بدء التصحيح
+        </a>
+    </div>
+    {% endif %}
+</div>
+
+<div class="card" id="questionAnalysis" style="display: none;">
+    <h2 style="margin-bottom: 20px;"><i class="fas fa-puzzle-piece"></i> تحليل الأسئلة</h2>
+    <div id="questionAnalysisContent"></div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+async function loadStats() {
+    try {
+        const response = await fetch('/api/stats/{{ exam_id }}');
+        const stats = await response.json();
+        
+        if (stats.total === 0) return;
+        
+        const container = document.getElementById('statsContainer');
+        container.innerHTML = `
+            <div class="stat-card">
+                <div class="stat-icon blue"><i class="fas fa-users"></i></div>
+                <div class="stat-value">${stats.total}</div>
+                <div class="stat-label">إجمالي الطلاب</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon green"><i class="fas fa-check"></i></div>
+                <div class="stat-value">${stats.pass_count}</div>
+                <div class="stat-label">عدد الناجحين</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon orange"><i class="fas fa-times"></i></div>
+                <div class="stat-value">${stats.fail_count}</div>
+                <div class="stat-label">عدد الراسبين</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon purple"><i class="fas fa-percentage"></i></div>
+                <div class="stat-value">${stats.avg_percentage}%</div>
+                <div class="stat-label">المعدل العام</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon green"><i class="fas fa-arrow-up"></i></div>
+                <div class="stat-value">${stats.max_score}</div>
+                <div class="stat-label">أعلى درجة</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon orange"><i class="fas fa-arrow-down"></i></div>
+                <div class="stat-value">${stats.min_score}</div>
+                <div class="stat-label">أدنى درجة</div>
+            </div>
+        `;
+        
+        // تحليل الأسئلة
+        if (stats.question_analysis && stats.question_analysis.length > 0) {
+            document.getElementById('questionAnalysis').style.display = 'block';
+            let html = '<div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 10px;">';
+            stats.question_analysis.forEach(q => {
+                let color = '#48bb78';
+                let label = 'سهل';
+                if (q.percentage < 50) { color = '#f56565'; label = 'صعب'; }
+                else if (q.percentage < 80) { color = '#ed8936'; label = 'متوسط'; }
+                
+                html += `
+                    <div style="background: white; padding: 15px; border-radius: 10px; border-right: 4px solid ${color}; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                            <strong>سؤال ${q.question}</strong>
+                            <span style="color: ${color}; font-size: 0.85em; font-weight: 700;">${label}</span>
+                        </div>
+                        <div style="background: #e2e8f0; height: 8px; border-radius: 4px; overflow: hidden;">
+                            <div style="background: ${color}; height: 100%; width: ${q.percentage}%;"></div>
+                        </div>
+                        <div style="margin-top: 6px; font-size: 0.85em; color: #718096;">
+                            ${q.correct} / ${q.total} (${q.percentage}%)
+                        </div>
+                    </div>
+                `;
+            });
+            html += '</div>';
+            document.getElementById('questionAnalysisContent').innerHTML = html;
+        }
+    } catch (e) {
+        console.error(e);
+    }
+}
+
+loadStats();
+</script>
+{% endblock %}

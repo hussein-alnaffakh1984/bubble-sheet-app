@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+
+{% block title %}الرئيسية - نظام التصحيح الآلي{% endblock %}
+
+{% block content %}
+<div class="card">
+    <h1 class="page-title">
+        <i class="fas fa-rocket"></i>
+        مرحباً بك في نظام التصحيح الآلي
+    </h1>
+    <p style="color: #718096; font-size: 1.1em; line-height: 1.8;">
+        نظام متكامل لتصحيح أوراق الإجابات (Bubble Sheets) بشكل آلي ودقيق. 
+        يمكنك إنشاء اختبارات، توليد أوراق إجابات PDF، رفع الصور الممسوحة، والحصول على النتائج والإحصائيات.
+    </p>
+</div>
+
+<div class="grid">
+    <div class="stat-card">
+        <div class="stat-icon blue">
+            <i class="fas fa-file-alt"></i>
+        </div>
+        <div class="stat-value">{{ total_exams }}</div>
+        <div class="stat-label">إجمالي الاختبارات</div>
+    </div>
+    
+    <div class="stat-card">
+        <div class="stat-icon green">
+            <i class="fas fa-clipboard-check"></i>
+        </div>
+        <div class="stat-value">{{ total_results }}</div>
+        <div class="stat-label">إجمالي الأوراق المصححة</div>
+    </div>
+    
+    <div class="stat-card">
+        <div class="stat-icon purple">
+            <i class="fas fa-cog"></i>
+        </div>
+        <div class="stat-value">∞</div>
+        <div class="stat-label">عدد الأسئلة المدعومة</div>
+    </div>
+    
+    <div class="stat-card">
+        <div class="stat-icon orange">
+            <i class="fas fa-bolt"></i>
+        </div>
+        <div class="stat-value">سريع</div>
+        <div class="stat-label">تصحيح فوري ودقيق</div>
+    </div>
+</div>
+
+<div class="card">
+    <h2 style="margin-bottom: 20px; color: #2d3748;">
+        <i class="fas fa-star" style="color: #f6ad55;"></i>
+        الخصائص الرئيسية
+    </h2>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;">
+        <div style="padding: 20px; border-right: 4px solid #667eea; background: #f7fafc; border-radius: 10px;">
+            <h3 style="color: #667eea;"><i class="fas fa-file-pdf"></i> توليد أوراق الإجابة</h3>
+            <p style="color: #718096; margin-top: 10px;">إنشاء أوراق إجابات PDF بأي عدد أسئلة وخيارات</p>
+        </div>
+        <div style="padding: 20px; border-right: 4px solid #48bb78; background: #f7fafc; border-radius: 10px;">
+            <h3 style="color: #48bb78;"><i class="fas fa-camera"></i> قراءة دقيقة</h3>
+            <p style="color: #718096; margin-top: 10px;">تصحيح المنظور وكشف الإجابات تلقائياً بتقنية OpenCV</p>
+        </div>
+        <div style="padding: 20px; border-right: 4px solid #ed8936; background: #f7fafc; border-radius: 10px;">
+            <h3 style="color: #ed8936;"><i class="fas fa-id-card"></i> رقم الطالب</h3>
+            <p style="color: #718096; margin-top: 10px;">قراءة رقم الطالب من الورقة تلقائياً</p>
+        </div>
+        <div style="padding: 20px; border-right: 4px solid #4299e1; background: #f7fafc; border-radius: 10px;">
+            <h3 style="color: #4299e1;"><i class="fas fa-chart-line"></i> تحليل شامل</h3>
+            <p style="color: #718096; margin-top: 10px;">إحصائيات وتحليل صعوبة الأسئلة وتقارير مفصلة</p>
+        </div>
+        <div style="padding: 20px; border-right: 4px solid #9f7aea; background: #f7fafc; border-radius: 10px;">
+            <h3 style="color: #9f7aea;"><i class="fas fa-file-excel"></i> تصدير Excel</h3>
+            <p style="color: #718096; margin-top: 10px;">تصدير النتائج إلى ملفات Excel منسقة</p>
+        </div>
+        <div style="padding: 20px; border-right: 4px solid #f56565; background: #f7fafc; border-radius: 10px;">
+            <h3 style="color: #f56565;"><i class="fas fa-minus-circle"></i> الخصم السلبي</h3>
+            <p style="color: #718096; margin-top: 10px;">دعم نظام الخصم على الإجابة الخاطئة</p>
+        </div>
+    </div>
+</div>
+
+<div style="text-align: center; margin-top: 30px;">
+    <a href="/create-exam" class="btn btn-primary" style="font-size: 1.2em; padding: 15px 35px;">
+        <i class="fas fa-plus-circle"></i>
+        ابدأ بإنشاء اختبار جديد
+    </a>
+</div>
+{% endblock %}

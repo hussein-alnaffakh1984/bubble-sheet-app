@@ -1,0 +1,271 @@
+{% extends "base.html" %}
+
+{% block title %}إنشاء اختبار جديد{% endblock %}
+
+{% block content %}
+<div class="card">
+    <h1 class="page-title">
+        <i class="fas fa-plus-circle"></i>
+        إنشاء اختبار جديد
+    </h1>
+    
+    <form id="examForm">
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+            <div class="form-group">
+                <label><i class="fas fa-heading"></i> اسم الاختبار *</label>
+                <input type="text" class="form-control" id="title" required placeholder="مثال: امتحان نهاية الفصل">
+            </div>
+            
+            <div class="form-group">
+                <label><i class="fas fa-book"></i> المادة</label>
+                <input type="text" class="form-control" id="subject" placeholder="مثال: الرياضيات">
+            </div>
+        </div>
+        
+        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px;">
+            <div class="form-group">
+                <label><i class="fas fa-list-ol"></i> عدد الأسئلة *</label>
+                <input type="number" class="form-control" id="num_questions" min="1" max="300" value="50" required>
+            </div>
+            
+            <div class="form-group">
+                <label><i class="fas fa-tasks"></i> عدد الخيارات</label>
+                <select class="form-control" id="num_choices">
+                    <option value="2">2 (A, B)</option>
+                    <option value="3">3 (A, B, C)</option>
+                    <option value="4" selected>4 (A, B, C, D)</option>
+                    <option value="5">5 (A, B, C, D, E)</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label><i class="fas fa-id-badge"></i> عدد خانات رقم الطالب</label>
+                <input type="number" class="form-control" id="student_id_digits" min="4" max="10" value="8">
+            </div>
+        </div>
+        
+        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px;">
+            <div class="form-group">
+                <label><i class="fas fa-star"></i> الدرجة لكل سؤال</label>
+                <input type="number" class="form-control" id="points_per_question" min="0.1" step="0.1" value="1">
+            </div>
+            
+            <div class="form-group">
+                <label><i class="fas fa-minus-circle"></i> الخصم على الخطأ</label>
+                <select class="form-control" id="negative_marking">
+                    <option value="0">بدون خصم</option>
+                    <option value="1">تفعيل الخصم</option>
+                </select>
+            </div>
+            
+            <div class="form-group" id="negative_value_group" style="display: none;">
+                <label><i class="fas fa-percentage"></i> قيمة الخصم</label>
+                <input type="number" class="form-control" id="negative_value" min="0" step="0.1" value="0.25">
+            </div>
+        </div>
+        
+        <div class="card" style="background: #f7fafc; margin-top: 20px;">
+            <h3 style="margin-bottom: 15px;"><i class="fas fa-key"></i> نموذج الإجابة الصحيحة</h3>
+            <p style="color: #718096; margin-bottom: 20px;">حدد الإجابة الصحيحة لكل سؤال</p>
+            
+            <div id="answerKeyContainer" style="max-height: 500px; overflow-y: auto; padding: 10px;">
+                <!-- يتم توليده ديناميكياً -->
+            </div>
+            
+            <div style="margin-top: 15px; display: flex; gap: 10px; flex-wrap: wrap;">
+                <button type="button" class="btn btn-info" onclick="generateAnswerKey()">
+                    <i class="fas fa-sync"></i> تحديث الأسئلة
+                </button>
+                <button type="button" class="btn btn-warning" onclick="fillAll('A')">
+                    <i class="fas fa-fill"></i> ملء الكل A
+                </button>
+                <button type="button" class="btn btn-warning" onclick="fillAll('B')">
+                    <i class="fas fa-fill"></i> ملء الكل B
+                </button>
+                <button type="button" class="btn btn-warning" onclick="fillRandom()">
+                    <i class="fas fa-random"></i> عشوائي
+                </button>
+                <button type="button" class="btn btn-danger" onclick="clearAll()">
+                    <i class="fas fa-trash"></i> مسح
+                </button>
+            </div>
+        </div>
+        
+        <div style="margin-top: 30px; text-align: center;">
+            <button type="submit" class="btn btn-success" style="font-size: 1.2em; padding: 15px 40px;">
+                <i class="fas fa-save"></i> إنشاء الاختبار وتوليد ورقة الإجابة
+            </button>
+        </div>
+    </form>
+    
+    <div id="result" style="margin-top: 30px; display: none;"></div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let numChoices = 4;
+
+document.getElementById('num_choices').addEventListener('change', function() {
+    numChoices = parseInt(this.value);
+    generateAnswerKey();
+});
+
+document.getElementById('num_questions').addEventListener('change', generateAnswerKey);
+
+document.getElementById('negative_marking').addEventListener('change', function() {
+    document.getElementById('negative_value_group').style.display = 
+        this.value === '1' ? 'block' : 'none';
+});
+
+function generateAnswerKey() {
+    const num = parseInt(document.getElementById('num_questions').value) || 50;
+    numChoices = parseInt(document.getElementById('num_choices').value) || 4;
+    const choices = ['A', 'B', 'C', 'D', 'E'].slice(0, numChoices);
+    
+    const container = document.getElementById('answerKeyContainer');
+    container.innerHTML = '';
+    
+    const grid = document.createElement('div');
+    grid.style.cssText = 'display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 10px;';
+    
+    for (let i = 1; i <= num; i++) {
+        const item = document.createElement('div');
+        item.style.cssText = 'background: white; padding: 10px; border-radius: 8px; display: flex; align-items: center; gap: 8px; border: 1px solid #e2e8f0;';
+        
+        const label = document.createElement('span');
+        label.textContent = `${i}.`;
+        label.style.cssText = 'font-weight: 700; color: #4a5568; min-width: 30px;';
+        
+        const buttons = document.createElement('div');
+        buttons.style.cssText = 'display: flex; gap: 4px;';
+        
+        choices.forEach(c => {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.textContent = c;
+            btn.dataset.question = i;
+            btn.dataset.choice = c;
+            btn.style.cssText = 'width: 30px; height: 30px; border-radius: 50%; border: 2px solid #cbd5e0; background: white; cursor: pointer; font-weight: 700; transition: all 0.2s;';
+            btn.onclick = function() {
+                // إزالة التحديد من نفس السؤال
+                document.querySelectorAll(`button[data-question="${i}"]`).forEach(b => {
+                    b.style.background = 'white';
+                    b.style.color = '#4a5568';
+                    b.style.borderColor = '#cbd5e0';
+                });
+                // تحديد هذا
+                this.style.background = '#667eea';
+                this.style.color = 'white';
+                this.style.borderColor = '#667eea';
+            };
+            buttons.appendChild(btn);
+        });
+        
+        item.appendChild(label);
+        item.appendChild(buttons);
+        grid.appendChild(item);
+    }
+    
+    container.appendChild(grid);
+}
+
+function fillAll(choice) {
+    document.querySelectorAll(`button[data-choice="${choice}"]`).forEach(btn => {
+        btn.click();
+    });
+}
+
+function fillRandom() {
+    const num = parseInt(document.getElementById('num_questions').value);
+    const choices = ['A', 'B', 'C', 'D', 'E'].slice(0, numChoices);
+    for (let i = 1; i <= num; i++) {
+        const random = choices[Math.floor(Math.random() * choices.length)];
+        const btn = document.querySelector(`button[data-question="${i}"][data-choice="${random}"]`);
+        if (btn) btn.click();
+    }
+}
+
+function clearAll() {
+    document.querySelectorAll('[data-question]').forEach(btn => {
+        btn.style.background = 'white';
+        btn.style.color = '#4a5568';
+        btn.style.borderColor = '#cbd5e0';
+    });
+}
+
+function getAnswerKey() {
+    const num = parseInt(document.getElementById('num_questions').value);
+    const answers = [];
+    for (let i = 1; i <= num; i++) {
+        const selected = document.querySelector(`button[data-question="${i}"][style*="rgb(102, 126, 234)"]`);
+        answers.push(selected ? selected.dataset.choice : null);
+    }
+    return answers;
+}
+
+document.getElementById('examForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const answerKey = getAnswerKey();
+    const unanswered = answerKey.filter(a => a === null).length;
+    
+    if (unanswered > 0) {
+        if (!confirm(`يوجد ${unanswered} سؤال بدون إجابة محددة. هل تريد المتابعة؟`)) {
+            return;
+        }
+    }
+    
+    const data = {
+        title: document.getElementById('title').value,
+        subject: document.getElementById('subject').value,
+        num_questions: parseInt(document.getElementById('num_questions').value),
+        num_choices: parseInt(document.getElementById('num_choices').value),
+        student_id_digits: parseInt(document.getElementById('student_id_digits').value),
+        points_per_question: parseFloat(document.getElementById('points_per_question').value),
+        negative_marking: document.getElementById('negative_marking').value === '1',
+        negative_value: parseFloat(document.getElementById('negative_value').value || 0),
+        answer_key: answerKey
+    };
+    
+    const resultDiv = document.getElementById('result');
+    resultDiv.style.display = 'block';
+    resultDiv.innerHTML = '<div class="alert alert-info"><i class="fas fa-spinner fa-spin"></i> جارٍ إنشاء الاختبار...</div>';
+    
+    try {
+        const response = await fetch('/api/create-exam', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            resultDiv.innerHTML = `
+                <div class="alert alert-success">
+                    <i class="fas fa-check-circle"></i>
+                    تم إنشاء الاختبار بنجاح! معرف الاختبار: <strong>${result.exam_id}</strong>
+                </div>
+                <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-top: 15px;">
+                    <a href="${result.pdf_url}" class="btn btn-primary" download>
+                        <i class="fas fa-download"></i> تحميل ورقة الإجابة PDF
+                    </a>
+                    <a href="/scan/${result.exam_id}" class="btn btn-success">
+                        <i class="fas fa-camera"></i> الانتقال للتصحيح
+                    </a>
+                    <a href="/exams" class="btn btn-info">
+                        <i class="fas fa-list"></i> قائمة الاختبارات
+                    </a>
+                </div>
+            `;
+        }
+    } catch (error) {
+        resultDiv.innerHTML = `<div class="alert alert-danger"><i class="fas fa-times-circle"></i> خطأ: ${error.message}</div>`;
+    }
+});
+
+// تهيئة عند التحميل
+generateAnswerKey();
+</script>
+{% endblock %}
