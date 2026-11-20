@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 نظام تصحيح أوراق الإجابة الآلي (Bubble Sheet Remark)
-Author: Built with Claude
+Author: Hussein Ali Hussein Al-Naffakh
 """
 
 from flask import Flask, render_template, request, jsonify, send_file, redirect, url_for
